@@ -6,8 +6,8 @@ defmodule LunaDocs.DocumentEndpoints do
   plug Plug.Parsers, parsers: [:json], pass: ["application/json"], json_decoder: Jason
 
    plug Plug.Static,
-    at: "/",  # You can adjust this as needed
-    from: :luna_docs,  # Your application's name as an atom
+    at: "/",
+    from: :luna_docs,
     gzip: false
 
   plug :match
@@ -15,6 +15,10 @@ defmodule LunaDocs.DocumentEndpoints do
 
   get "/" do
     send_resp(conn, 200, File.read!("priv/static/index.html"))
+  end
+
+  get "/ws" do
+
   end
 
   # get "/" do
