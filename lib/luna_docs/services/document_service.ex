@@ -16,8 +16,14 @@ defmodule LunaDocs.DocumentService do
       %{doc_content: "", doc_name: doc_name}
     end)
 
-    response = %{code: 200, message: "Document created successfully", data: new_state}
+    response = %{code: 200, data: new_state}
     {:reply, response, new_state}
+  end
+
+  def handle_call({:get_documents}, _from, state) do
+    Logger.info("Called :get_documents")
+    response = %{code: 200, data: state}
+    {:reply, response, state}
   end
 
   def get_next_id(state) do

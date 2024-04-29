@@ -15,6 +15,7 @@ const documentName = ref('');
 const documentContent = ref('');
 
 const listOfEditors = ref([] as string[]);
+const ws = new WebSocket("ws://localhost:8000/ws");
 
 onMounted(() => {
   listOfEditors.value.push("Me");
@@ -22,6 +23,19 @@ onMounted(() => {
   documentName.value = documentStore.documentName.toString();
   documentContent.value = documentStore.documentContent.toString();
 });
+
+ws.onopen = function () {
+  console.log("Connected");
+  ws.send("Hi");
+};
+
+ws.onmessage = function (event) {
+  console.log("Received:", event.data);
+};
+
+ws.onerror = function (event) {
+  console.error("WebSocket error:", event);
+};
 
 const onTextChange = (event: EditorTextChangeEvent) => {
   console.log(event.textValue);

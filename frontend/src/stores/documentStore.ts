@@ -1,13 +1,16 @@
 import { defineStore, Pinia } from "pinia";
 
-
+interface DocumentApiResponse {
+  code : number
+  data : Map<number, {doc_content: string, doc_name: string}>
+}
 
 export const useDocumentStore = defineStore("document", {
   state: () => ({
     documentId: -1,
     documentName: "",
     documentContent: "",
-    listOfDocumentIds: []
+    listOfDocumentIds: [] as number[],
   }),
   actions: {
     /**
@@ -29,8 +32,14 @@ export const useDocumentStore = defineStore("document", {
       this.documentContent = content
     },
 
-    getListOfDocumentIds(listOfDocumentIds: number[]) {
-      // TODO GET FROM BACKEND
+    getListOfDocumentIds() {
+      fetch("http://localhost:8000/api/documents")
+        .then((response) => response.json())
+        .then((resp: DocumentApiResponse) => {
+          resp.data.forEach((value: {doc_content: string, doc_name: string}, key: number) => {
+            this.listOfDocumentIds.push(key)
+          })
+        })
     }
   }
 })

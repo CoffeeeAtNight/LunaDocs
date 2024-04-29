@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
@@ -96,6 +96,11 @@ const isLoading = ref(false);
 
 
 const newDocName = ref('');
+
+onMounted(() => {
+  documentStore.getListOfDocumentIds();
+  console.log(documentStore.listOfDocumentIds);
+});
 
 const addDocument = (docId: number, docName: string) => {
   items.value.push({ id: docId, title: docName, content: "", checked: false });
