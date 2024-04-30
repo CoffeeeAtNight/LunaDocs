@@ -14,7 +14,7 @@
 
     <div class="grid-container">
       <div class="grid">
-        <Card v-for="item in items" :key="item.id" class="card" @click="openDocument(item.id)">
+        <Card v-for="item in items" :key="item.id" class="card" @click="openDocument(item.id, item.title)">
           <template #title>
             <div class="title-container">
               <p class="title-text text-primary m-0">{{ item.title }}</p>
@@ -74,37 +74,33 @@ import Checkbox from 'primevue/checkbox';
 import Toast from 'primevue/toast';
 import { useToast } from "primevue/usetoast";
 import ProgressSpinner from 'primevue/progressspinner';
-import { useDocumentStore } from '@/stores/documentStore';
+import { type Document, useDocumentStore } from '@/stores/documentStore';
 
 const toast = useToast();
 const router = useRouter();
 const documentStore = useDocumentStore();
 
-const items = ref([
-  { id: 1, title: 'Test Document 1', content: 'Super cool document with very important information here', checked: false },
-  { id: 2, title: 'Test Document 2', content: Array(Math.floor(Math.random() * 10) + 10).fill('Lorem ipsum ').join(''), checked: false },
-  { id: 3, title: 'Test Document 3', content: Array(Math.floor(Math.random() * 10) + 10).fill('Dolor sit amet ').join(''), checked: false },
-  { id: 4, title: 'Test Document 4', content: Array(Math.floor(Math.random() * 10) + 10).fill('Consectetur adipiscing ').join(''), checked: false },
-  { id: 5, title: 'Test Document 5', content: Array(Math.floor(Math.random() * 10) + 10).fill('Elit sed do eiusmod ').join(''), checked: false },
-  { id: 6, title: 'Test Document 6', content: Array(Math.floor(Math.random() * 10) + 10).fill('Tempor incididunt ut labore ').join(''), checked: false },
-  { id: 7, title: 'Test Document 7', content: Array(Math.floor(Math.random() * 10) + 10).fill('Et dolore magna aliqua ').join(''), checked: false },
-]);
+const items = ref([] as Document[]);
 
 const visible = ref(false);
 const deleteVisible = ref(false);
 const isLoading = ref(false);
-
-
 const newDocName = ref('');
 
-onMounted(() => {
-  documentStore.getListOfDocumentIds();
-  console.log(documentStore.listOfDocumentIds);
+onMounted(async () => {
+  fetchDocuments()
 });
 
-const addDocument = (docId: number, docName: string) => {
-  items.value.push({ id: docId, title: docName, content: "", checked: false });
+const addDocument = async (docId: number, docName: string) => {
+  items.value.push({ id: docId + 1, title: docName, content: "", checked: false });
+  await documentStore.addDocument(docName);
+  fetchDocuments();
+  newDocName.value = "";
   toast.add({ severity: 'success', summary: 'Document Created', detail: 'Document created successfully', life: 3000 });
+};
+
+const fetchDocuments = async () => {
+  items.value = await documentStore.getListOfDocuments();
 };
 
 const removeSelectedDocuments = () => {
@@ -113,12 +109,12 @@ const removeSelectedDocuments = () => {
   toast.add({ severity: 'success', summary: 'Document Deleted', detail: 'Document deleted successfully', life: 3000 });
 };
 
-const openDocument = async (docId: number) => {
+const openDocument = async (docId: number, docName: string) => {
   isLoading.value = true; 
   console.log("Loading started");
   try {
-    documentStore.openDocument(docId);
-    documentStore.documentName = items.value.find(item => item.id === docId)?.title ?? "";
+    const docContent = extractDocContentById(docId);
+    documentStore.openDocument(docId, docName, docContent);
     setTimeout(async () => { 
       await router.push({ name: 'document', params: { id: docId.toString() } });
       toast.add({ severity: 'success', summary: 'Document Opened', detail: 'You have been redirected to the document.', life: 3000 });
@@ -130,12 +126,18 @@ const openDocument = async (docId: number) => {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to open document.', life: 3000 });
   }
 }
+
+const extractDocContentById = (docId: number) => {
+  return items.value.find(item => item.id === docId)?.content ?? "";
+}
 </script>
 
 <style scoped>
 .grid-container {
   width: 100%;
   margin: 0 auto;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
 .outer-padding {

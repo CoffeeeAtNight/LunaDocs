@@ -1,8 +1,20 @@
 import { defineStore, Pinia } from "pinia";
 
 interface DocumentApiResponse {
-  code : number
-  data : Map<number, {doc_content: string, doc_name: string}>
+  code: number;
+  data: {
+    [key: string]: {
+      doc_content: string;
+      doc_name: string;
+    }
+  }
+}
+
+export interface Document {
+  id: number;
+  title: string;
+  content: string;
+  checked: boolean;
 }
 
 export const useDocumentStore = defineStore("document", {
@@ -10,7 +22,7 @@ export const useDocumentStore = defineStore("document", {
     documentId: -1,
     documentName: "",
     documentContent: "",
-    listOfDocumentIds: [] as number[],
+    listOfDocuments: [] as DocumentApiResponse[],
   }),
   actions: {
     /**
@@ -18,9 +30,10 @@ export const useDocumentStore = defineStore("document", {
      *
      * @param {number} docId - The ID of the document to be opened.
      */
-    openDocument(docId: number) {
+    openDocument(docId: number, docName: string, docContent: string) {
       this.documentId = docId
-      // TODO GET NAME FROM BACKEND BY ID
+      this.documentName = docName
+      this.documentContent = docContent
     },
 
     /**
@@ -32,14 +45,35 @@ export const useDocumentStore = defineStore("document", {
       this.documentContent = content
     },
 
-    getListOfDocumentIds() {
-      fetch("http://localhost:8000/api/documents")
-        .then((response) => response.json())
-        .then((resp: DocumentApiResponse) => {
-          resp.data.forEach((value: {doc_content: string, doc_name: string}, key: number) => {
-            this.listOfDocumentIds.push(key)
-          })
-        })
+    async addDocument(docName: string) {
+      const response = await fetch("http://localhost:8000/api/create/document", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ documentName: docName })
+      }).then(response => console.log("Added document: ", response));
+    },
+
+    async getListOfDocuments(): Promise<Document[]> {
+      try {
+        const response = await fetch("http://localhost:8000/api/documents");
+        const resp = await (response.json() as Promise<DocumentApiResponse>);
+        const documents: Document[] = Object.entries(resp.data).map(([id, { doc_name, doc_content }]) => ({
+          id: Number(id),
+          title: doc_name,
+          content: doc_content,
+          checked: false
+        }));
+
+        console.log(documents);
+        return documents;
+      } catch (error) {
+        console.error('Error fetching documents:', error);
+        throw error;
+      }
     }
+
   }
 })
+

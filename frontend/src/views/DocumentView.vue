@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useDocumentStore } from '@/stores/documentStore';
 import { useToast } from "primevue/usetoast";
 import Toolbar from 'primevue/toolbar';
 import Button from 'primevue/button';
+import { useRouter } from 'vue-router';
 import Editor, { EditorTextChangeEvent } from 'primevue/editor';
-
 
 const documentStore = useDocumentStore();
 const toast = useToast();
@@ -13,6 +13,8 @@ const toast = useToast();
 const documentId = ref('');
 const documentName = ref('');
 const documentContent = ref('');
+
+const router = useRouter();
 
 const listOfEditors = ref([] as string[]);
 const ws = new WebSocket("ws://localhost:8000/ws");
@@ -24,13 +26,18 @@ onMounted(() => {
   documentContent.value = documentStore.documentContent.toString();
 });
 
+onUnmounted(() => {
+  ws.close();
+});
+
 ws.onopen = function () {
   console.log("Connected");
-  ws.send("Hi");
 };
 
 ws.onmessage = function (event) {
   console.log("Received:", event.data);
+  const data = JSON.parse(event.data);
+  documentContent.value = data.documentContent;
 };
 
 ws.onerror = function (event) {
@@ -38,7 +45,12 @@ ws.onerror = function (event) {
 };
 
 const onTextChange = (event: EditorTextChangeEvent) => {
-  console.log(event.textValue);
+  console.log(documentId.value);
+  const message = {
+    documentId: documentId.value,
+    documentContent: event.textValue
+  };
+  ws.send( JSON.stringify(message) );
 }
 </script>
 
@@ -52,8 +64,7 @@ const onTextChange = (event: EditorTextChangeEvent) => {
 
     <template #center>
       <ButtonGroup>
-        <Button label="Save" icon="pi pi-check" class="mr-3"/>
-        <Button label="Go back" icon="pi pi-sign-out" />
+        <Button label="Go back" icon="pi pi-sign-out" @click="router.back()" />
       </ButtonGroup>
     </template>
 

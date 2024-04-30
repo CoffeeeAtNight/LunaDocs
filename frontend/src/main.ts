@@ -7,6 +7,7 @@ import Card from 'primevue/card';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import ToastService from 'primevue/toastservice';
+import Editor from 'primevue/editor';
 import { createPinia } from 'pinia'
 
 
@@ -27,4 +28,5 @@ app.use(pinia)
 app.component('Card', Card)
 app.component('Button', Button)
 app.component('Dialog', Dialog)
+app.component('Editor', Editor);
 app.mount('#app')
