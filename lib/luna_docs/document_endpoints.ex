@@ -21,10 +21,10 @@ defmodule LunaDocs.DocumentEndpoints do
   end
 
 
- post "/api/create/document" do
+ post "/api/document" do
     case conn.body_params do
       %{"documentName" => docName} ->
-        Logger.info("Called endpoint to create doc!!")
+        Logger.info("Called endpoint to create doc!")
         response = GenServer.call(:document_service, {:create_document, docName})
         Logger.info("Now calling handle_response with: #{inspect(response)}")
         handle_response(response, conn)
@@ -39,8 +39,29 @@ defmodule LunaDocs.DocumentEndpoints do
   get "/api/documents" do
     Logger.info("Called endpoint to create doc!!")
     response = GenServer.call(:document_service, {:get_documents})
-    Logger.info("Now calling handle_response with: #{inspect(response)}")
+    Logger.info("GET /docs called")
     handle_response(response, conn)
+  end
+
+  get "/api/document/:id" do
+    response = GenServer.call(:document_service, {:get_document_content_by_id, id})
+    Logger.info("GET /doc/id called")
+    handle_response(response, conn)
+  end
+
+  put "/api/document/:id" do
+    case conn.body_params do
+      %{"documentId" => docId, "documentContent" => _docContent} ->
+        Logger.info("Called endpoint to update doc with id: #{inspect(docId)}")
+        response = GenServer.call(:document_service, {:update_document_content, Jason.encode!(conn.body_params)})
+        Logger.info("Now calling handle_response with: #{inspect(response)}")
+        handle_response(response, conn)
+
+      _ ->
+        conn
+        |> send_resp(400, "Missing values in body")
+        |> halt()
+    end
   end
 
   get "/favicon.ico" do

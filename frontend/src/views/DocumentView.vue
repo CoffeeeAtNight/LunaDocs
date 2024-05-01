@@ -17,38 +17,28 @@ const documentContent = ref('');
 const router = useRouter();
 
 const listOfEditors = ref([] as string[]);
-const ws = new WebSocket("ws://localhost:8000/ws");
 
 onMounted(() => {
   listOfEditors.value.push("Me");
   documentId.value = documentStore.documentId.toString();
   documentName.value = documentStore.documentName.toString();
   documentContent.value = documentStore.documentContent.toString();
+
+  periodicallyFetchNewDocContent()
 });
 
-onUnmounted(() => {
-  ws.close();
-});
+// ws.onmessage = function (event) {
+//   try {
+//     const data = JSON.parse(event.data);
+//     console.log("Received:", data);
+//     if (data.documentContent) {
+//       documentContent.value = data.documentContent;
+//     }
+//   } catch (e) {
+//     console.error("Failed to parse message:", event.data);
+//   }
+// };
 
-ws.onopen = function () {
-  console.log("Connected");
-};
-
-ws.onmessage = function (event) {
-  try {
-    const data = JSON.parse(event.data);
-    console.log("Received:", data);
-    if (data.documentContent) {
-      documentContent.value = data.documentContent;
-    }
-  } catch (e) {
-    console.error("Failed to parse message:", event.data);
-  }
-};
-
-ws.onerror = function (event) {
-  console.error("WebSocket error:", event);
-};
 
 const onTextChange = (event: EditorTextChangeEvent) => {
   console.log(documentId.value);
@@ -56,7 +46,15 @@ const onTextChange = (event: EditorTextChangeEvent) => {
     documentId: documentId.value,
     documentContent: event.textValue
   };
-  ws.send( JSON.stringify(message) );
+  documentStore.updateDocumentContent(parseInt(documentId.value), JSON.stringify(message));
+}
+
+const periodicallyFetchNewDocContent = async () => {
+  console.log("Fetching new content...")
+  const newContent = await documentStore.getDocumentContentById(parseInt(documentId.value));
+  console.log("Content is: ", newContent)
+  documentContent.value = newContent;
+  setTimeout(periodicallyFetchNewDocContent, 100);
 }
 </script>
 

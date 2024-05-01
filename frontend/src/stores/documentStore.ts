@@ -10,6 +10,11 @@ interface DocumentApiResponse {
   }
 }
 
+interface DocumentUpdatedContentResponse {
+  code: number,
+  data: string
+}
+
 export interface Document {
   id: number;
   title: string;
@@ -45,8 +50,14 @@ export const useDocumentStore = defineStore("document", {
       this.documentContent = content
     },
 
-    async addDocument(docName: string) {
-      const response = await fetch("http://localhost:8000/api/create/document", {
+  /**
+   * Adds a document to the API.
+   *
+   * @param {string} docName - The name of the document to be added.
+   * @return {Promise<void>} A promise that resolves when the document is added successfully.
+   */
+    async addDocument(docName: string): Promise<void> {
+      const response = await fetch("http://localhost:8000/api/document", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -55,6 +66,12 @@ export const useDocumentStore = defineStore("document", {
       }).then(response => console.log("Added document: ", response));
     },
 
+  /**
+   * Retrieves a list of documents from the API.
+   *
+   * @return {Document[]} A promise that resolves with an array of Document objects representing the documents fetched from the API.
+   * @throws {Error} If there is an error fetching the documents from the API.
+   */
     async getListOfDocuments(): Promise<Document[]> {
       try {
         const response = await fetch("http://localhost:8000/api/documents");
@@ -70,9 +87,49 @@ export const useDocumentStore = defineStore("document", {
         return documents;
       } catch (error) {
         console.error('Error fetching documents:', error);
+        throw Error("Error fetching documents")
+      }
+    },
+
+    /**
+     * Handles updating the document content on the server.
+     * @param {number} newDocumentContent - The ID of the document to be updated.
+     * @param {string} documentIdToUpdate - The new content of the document.
+     * @return {void} This function does not return anything.
+     */
+    async updateDocumentContent(documentIdToUpdate: number, document: any): Promise<void> {
+      try {
+        console.log("DOCUMENT IS: ", JSON.stringify(document))
+        const request = {
+          method: "PUT",
+          headers: { 'Content-Type': 'application/json' },
+          body: document
+        }
+        const response = await fetch(`http://localhost:8000/api/document/${documentIdToUpdate}`, request);
+        const responseBody = await response.json()
+        if (responseBody != "ok") console.error("Error occurred updating document");
+      } catch (error) {
+        console.error('Error fetching documents:', error);
+      }
+    },
+
+  /**
+   * Retrieves the content of a document by its ID.
+   *
+   * @param {number} documentId - The ID of the document.
+   * @return {Promise<String>} A promise that resolves to the content of the document.
+   * @throws {Error} If there is an error fetching the document.
+   */
+    async getDocumentContentById(documentId: number): Promise<string> {
+      try {
+        const response = await fetch(`http://localhost:8000/api/document/${documentId}`);
+        const changedContentResponse = await response.json() as DocumentUpdatedContentResponse;
+        return changedContentResponse.data;
+      } catch (error) {
+        console.error('Error getting content of document by id :', error);
         throw error;
       }
-    }
+    },
 
   }
 })

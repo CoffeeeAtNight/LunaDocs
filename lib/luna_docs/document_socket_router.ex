@@ -6,18 +6,45 @@ defmodule LunaDocs.SocketRouter do
     {:cowboy_websocket, req, %{sender_pid: self()}, %{idle_timeout: 60_000, max_frame_size: 1_000_000}}
   end
 
-  def websocket_init(state) do
-    Logger.info("WebSocket connection established")
-    handle_manager_communication(:add_conn, self())
-    {:ok, state}
+ def websocket_init(state) do
+    # Retrieve all documents
+    response = GenServer.call(:document_service, {:get_documents})
+
+    # Extract the first document's ID
+    document_id = extract_document_id(response.data)
+
+    # Check for nil and handle if necessary
+    if is_nil(document_id) do
+      Logger.error("No documents available to initialize WebSocket.")
+      {:error, :no_documents}
+    else
+      # Update state with the document ID
+      updated_state = Map.put(state, :document_id, document_id)
+
+      # Register this WebSocket connection with the document ID in the Registry
+      Registry.register(LunaDocs.Registry, "doc:#{document_id}", [])
+
+      Logger.info("WebSocket initialized for document ID: #{document_id}")
+      {:ok, updated_state}
+    end
   end
 
-  def websocket_handle({:text, json_string}, state) do
+  defp extract_document_id(documents) do
+    # Get the first ":id" from the list
+    documents
+    |> Map.keys()
+    |> Enum.at(0, nil)
+  end
+
+   def websocket_handle({:text, json_string}, state) do
     Logger.info("Received message: #{json_string}")
     case Jason.decode(json_string) do
       {:ok, data} when is_map(data) ->
         Logger.info("Decoded JSON: #{Jason.encode!(data)}")
-        broadcast_message(data, state.sender_pid)
+        # Pass the document_id from state and the data to be broadcasted
+        Logger.info("Document ID: #{state.document_id}, Data: #{inspect(data)}")
+        save_doc(Jason.encode!(data))
+        # broadcast_message(state.document_id, data)
         {:reply, {:text, Jason.encode!(%{response: "Message broadcasted"})}, state}
       {:error, _error} ->
         Logger.error("Failed to decode JSON: #{json_string}")
@@ -43,45 +70,37 @@ defmodule LunaDocs.SocketRouter do
   # end
 
 
-  defp broadcast_message(message, sender_pid) do
-    encoded_message = Jason.encode!(message)
+  defp save_doc(doc_content) do
+    response = GenServer.call(:document_service, {:update_document_content, doc_content})
+    Logger.info("Response is: #{inspect(response)}")
+  end
 
-    case GenServer.call(:websocket_manager, :get_connections) do
-      {:ok, connection_pids} ->
-        Enum.each(connection_pids, fn pid ->
-          if pid != sender_pid do
-            try do
-              send(pid, {:text, encoded_message})
-            rescue
-              exception ->
-                Logger.error("Failed to send message to #{inspect(pid)}: #{exception.message}")
-            else
-              _ ->
-                Logger.info("Successfully broadcasted message to #{inspect(pid)}")
-            end
-          end
-        end)
-      error ->
-        Logger.error("Error retrieving connections: #{inspect(error)}")
-    end
+  defp broadcast_message(document_id, message) do
+    # Assume message is already in proper format or encode it here
+    Logger.info("Broadcasting message: #{inspect(message)} for id #{document_id}")
+    encoded_message = Jason.encode!(message)
+    subscribers = Registry.lookup(LunaDocs.Registry, "doc:#{document_id}")
+    Logger.info("Subscribers: #{inspect(subscribers)}")
+    Enum.each(subscribers, fn {pid, _} ->
+      send(pid, {:text, encoded_message})
+    end)
   end
 
   def websocket_info(any, state) do
     {:ok, any, state}
   end
 
-  def terminate(reason, state) do
-    Logger.info("WebSocket connection terminated: #{inspect(reason)}")
-    handle_manager_communication(:remove_conn, state.sender_pid)
+  def terminate(_reason, state) do
+    Registry.unregister(LunaDocs.Registry, "doc:#{state.document_id}")
     :ok
   end
 
-  defp handle_manager_communication(operation, pid) do
-    try do
-      GenServer.call(:websocket_manager, {operation, pid})
-    rescue
-      exception ->
-        Logger.error("Failed to communicate with WebSocket Manager: #{inspect(exception)}")
-    end
-  end
+  # defp handle_manager_communication(operation, pid) do
+  #   try do
+  #     GenServer.call(:websocket_manager, {operation, pid})
+  #   rescue
+  #     exception ->
+  #       Logger.error("Failed to communicate with WebSocket Manager: #{inspect(exception)}")
+  #   end
+  # end
 end
