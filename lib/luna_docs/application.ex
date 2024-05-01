@@ -6,7 +6,6 @@ defmodule LunaDocs.Application do
   def start(_type, _args) do
     children = [
       LunaDocs.DocumentService,
-      LunaDocs.WebSocketManager,
       {Plug.Cowboy,
        scheme: :http,
        plug: LunaDocs.DocumentEndpoints,
@@ -14,7 +13,6 @@ defmodule LunaDocs.Application do
          port: 8000,
          dispatch: [
           {:_, [
-            {"/ws", LunaDocs.SocketRouter, []},
             {:_, Plug.Cowboy.Handler, {LunaDocs.DocumentEndpoints, []}},
           ]}
         ]
