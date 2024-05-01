@@ -30,6 +30,7 @@ defmodule LunaDocs.DocumentService do
     Logger.info("Called update document: #{inspect(payload)}")
     case Jason.decode(payload) do
       {:ok, %{"documentId" => document_id, "documentContent" => document_content}} ->
+        Logger.info("Got document_id: #{document_id}, document_content: #{document_content}")
         document_id = String.to_integer(document_id)
         new_state = Map.update(state, document_id, %{"doc_content" => document_content, "doc_name" => ""}, fn old -> Map.put(old, "doc_content", document_content) end)
         {:reply, :ok, new_state}

@@ -35,9 +35,15 @@ ws.onopen = function () {
 };
 
 ws.onmessage = function (event) {
-  console.log("Received:", event.data);
-  const data = JSON.parse(event.data);
-  documentContent.value = data.documentContent;
+  try {
+    const data = JSON.parse(event.data);
+    console.log("Received:", data);
+    if (data.documentContent) {
+      documentContent.value = data.documentContent;
+    }
+  } catch (e) {
+    console.error("Failed to parse message:", event.data);
+  }
 };
 
 ws.onerror = function (event) {
